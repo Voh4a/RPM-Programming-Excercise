@@ -1,0 +1,28 @@
+IF DB_ID('RPMProgrammingExcercise') IS NOT NULL
+BEGIN
+	DROP DATABASE RPMProgrammingExcercise
+END
+CREATE DATABASE RPMProgrammingExcercise  
+ON   
+( NAME = RPMProgrammingExcercise_dat,  
+    FILENAME = 'C:\VolodiaWork\SQL_DB\RPMProgrammingExcercise_dat.mdf',  
+    SIZE = 10,  
+    MAXSIZE = 100,  
+    FILEGROWTH = 5 )  
+LOG ON  
+( NAME = RPMProgrammingExcercise_log,  
+    FILENAME = 'C:\VolodiaWork\SQL_DB\RPMProgrammingExcercise_log.ldf',  
+    SIZE = 5MB,  
+    MAXSIZE = 25MB,  
+    FILEGROWTH = 5MB );  
+GO
+
+USE RPMProgrammingExcercise;
+
+CREATE TABLE [dbo].PetroleumPrice (
+	[PetroleumPriceID]	INT		IDENTITY (1, 1) NOT NULL,
+	[Period]			DATE	NOT NULL,
+	[Price]				DECIMAL(4, 3) NOT NULL
+
+	CONSTRAINT UC_PetroleumPrice_Period UNIQUE ([Period])
+)

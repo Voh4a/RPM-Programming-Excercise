@@ -1,15 +1,12 @@
-﻿using Microsoft.Extensions.Primitives;
+﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RPM_Programming_Excercise.Common;
 using RPM_Programming_Excercise.Common.Extensions;
-using RPM_Programming_Excercise.EiaApi.Models.RequestModel;
-using RPM_Programming_Excercise.EiaApi.Models.ResponseModel;
+using RPM_Programming_Excercise.Models;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace RPM_Programming_Excercise.EiaApi
@@ -18,25 +15,19 @@ namespace RPM_Programming_Excercise.EiaApi
     {
         private const string apiKey = "EthXWE6eUTrBEJ1uTpNCqbL4NjghRxaC2R5tw1b2";
         private const string petroleumApiUri = "v2/petroleum/pri/gnd/data";
+        
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ILogger<EiaPetroleumApiService> _logger;
 
-        public EiaPetroleumApiService(IHttpClientFactory httpClientFactory)
+        public EiaPetroleumApiService(IHttpClientFactory httpClientFactory, ILoggerFactory loggerFactory)
         {
             _httpClientFactory = httpClientFactory;
+            _logger = loggerFactory.CreateLogger<EiaPetroleumApiService>();
         }
 
-        public async Task GeteData()
+        public async Task<List<PetroleumModel>> GetPetroleumData(/*IRequestModel parameters*/)
         {
-            //var requestModel = new PetroleumGetRequestModel
-            //{
-            //    Frequency = "weekly",
-            //    Data = new List<string> { "value" },
-            //    Facets = new Dictionary<string, List<string>> { { "series", new List<string> { "EMD_EPD2D_PTE_NUS_DPG" } } },
-            //    Sort = new List<SortModel> { new SortModel { Column = "period", Direction = "desc" } },
-            //    Offset = 0,
-            //    Length = 5000
-            //};
-
+            // TODO: retrieve the dictionary of params by calling the method GenerateDictionaryOfParams from interface IRequestModel
             var parameters = new Dictionary<string, string>
             {
                 { "frequency", "weekly"},
@@ -50,16 +41,36 @@ namespace RPM_Programming_Excercise.EiaApi
             };
 
             using var httpClient = _httpClientFactory.CreateClient(Constants.EiaPetroleumApiName);
-
-            var httpResponse = await httpClient.GetWithQueryStringAsync(petroleumApiUri, parameters);
-
-            if (httpResponse.IsSuccessStatusCode)
+            try
             {
-                var contentStream = await httpResponse.Content.ReadAsStringAsync();
+                var httpResponse = await httpClient.GetWithQueryStringAsync(petroleumApiUri, parameters);
 
-                var jsonObject = JObject.Parse(contentStream);
-                var result = JsonConvert.DeserializeObject<BaseResponseModel<PetroleumResponseModel>>(jsonObject["response"].ToString());
+                if (httpResponse == null || httpResponse.Content == null)
+                {
+                    throw new Exception("Invalid HTTP Response");
+                }
+
+                var content = await httpResponse.Content.ReadAsStringAsync();
+                var jsonObject = JObject.Parse(content);
+
+                if (!httpResponse.IsSuccessStatusCode)
+                {
+                    var error = JsonConvert.DeserializeObject<ErrorResponseModel>(jsonObject["error"].ToString());
+                    _logger.LogError(jsonObject["error"].ToString());
+
+                    throw new Exception(error.Message);
+                }
+
+                var result = JsonConvert.DeserializeObject<BaseResponseModel<PetroleumModel>>(jsonObject["response"].ToString());
+
+                return result.Data;
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+                throw;
+            }
+           
         }
     }
 }
